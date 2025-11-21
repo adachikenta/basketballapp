@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="{{ CURRENT_LANGUAGE }}">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}{{ _('system') }}{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    {% if current_user.is_authenticated %}
+    <script src="{{ url_for('static', filename='js/session-countdown.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/inactivity-blur.js') }}"></script>
+    {% endif %}
+    <style>
+        .dropdown-menu {
+            position: relative;
+            display: inline-block;
+        }
+        .dropdown-button {
+            background-color: rgba(255, 255, 255, 0.18);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            color: white;
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            padding: 8px 16px;
+            transition: all 0.2s ease;
+            border-radius: 6px;
+            height: 36px;
+            display: inline-flex;
+            align-items: center;
+            line-height: 1.5;
+            letter-spacing: 0.2px;
+        }
+        .dropdown-button:hover {
+            background-color: rgba(255, 255, 255, 0.28);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .dropdown-button.active {
+            background-color: rgba(255, 255, 255, 0.35);
+        }
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            right: 0;
+            background-color: #0da12e;
+            min-width: 220px;
+            box-shadow: 0px 8px 24px 0px rgba(0,0,0,0.25);
+            z-index: 1000;
+            border-radius: 8px;
+            margin-top: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+        }
+        .dropdown-content.show {
+            display: block;
+        }
+        .dropdown-content a {
+            color: white;
+            padding: 12px 18px;
+            text-decoration: none;
+            display: block;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+            transition: all 0.2s ease;
+            font-size: 14px;
+            font-weight: 500;
+            letter-spacing: 0.2px;
+        }
+        .dropdown-content a:last-child {
+            border-bottom: none;
+            border-radius: 0 0 7px 7px;
+        }
+        .dropdown-content a:first-child {
+            border-radius: 7px 7px 0 0;
+        }
+        .dropdown-content a:hover {
+            background-color: rgba(0, 0, 0, 0.2);
+            padding-left: 22px;
+        }
+    </style>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const dropdownMenus = document.querySelectorAll('.dropdown-menu');
+            
+            dropdownMenus.forEach(function(menu) {
+                const button = menu.querySelector('.dropdown-button');
+                const dropdown = menu.querySelector('.dropdown-content');
+                
+                if (button && dropdown) {
+                    button.addEventListener('click', function(e) {
+                        e.stopPropagation();
+                        
+                        // 他のドロップダウンを閉じる
+                        dropdownMenus.forEach(function(otherMenu) {
+                            if (otherMenu !== menu) {
+                                const otherDropdown = otherMenu.querySelector('.dropdown-content');
+                                const otherButton = otherMenu.querySelector('.dropdown-button');
+                                if (otherDropdown) otherDropdown.classList.remove('show');
+                                if (otherButton) otherButton.classList.remove('active');
+                            }
+                        });
+                        
+                        dropdown.classList.toggle('show');
+                        button.classList.toggle('active');
+                    });
+                }
+            });
+            
+            document.addEventListener('click', function(e) {
+                if (!e.target.closest('.dropdown-menu')) {
+                    dropdownMenus.forEach(function(menu) {
+                        const dropdown = menu.querySelector('.dropdown-content');
+                        const button = menu.querySelector('.dropdown-button');
+                        if (dropdown) dropdown.classList.remove('show');
+                        if (button) button.classList.remove('active');
+                    });
+                }
+            });
+        });
+    </script>
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <div class="topbar">
+        <div class="topbar-left">
+            <a href="/" class="logo">🏀 {{ _('system') }}</a>
+            {% if current_user.is_authenticated %}
+                <a href="/" class="topbar-link-button">{{ _('home') }}</a>
+                <a href="/play/list" class="topbar-link-button">{{ _('play_book') }}</a>
+                <div class="dropdown-menu">
+                    <button class="dropdown-button">{{ _('statistics') }}</button>
+                    <div class="dropdown-content">
+                        <a href="/statistics/player">{{ _('player_statistics') }}</a>
+                        <a href="/statistics/team">{{ _('team_statistics') }}</a>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+        <div class="topbar-right">
+            {% if current_user.is_authenticated %}
+                <span id="topbar-countdown" class="topbar-countdown"></span>
+                <button id="topbar-lock-button" class="topbar-button" onclick="lockSessionNow()">{{ _('lock_now') }}</button>
+                <a href="/change_password" class="topbar-button">{{ _('change_password') }}</a>
+                <a href="/logout" class="topbar-button">{{ _('logout') }}</a>
+            {% endif %}
+            <form action="{{ url_for('set_language') }}" method="post" class="language-form">
+                <select id="language" name="language" onchange="this.form.submit()">
+                    {% for key, value in AVAILABLE_LANGUAGES.items() %}
+                    <option value="{{key}}" {% if key == CURRENT_LANGUAGE %}selected{% endif %}>{{value}}</option>
+                    {% endfor %}
+                </select>
+            </form>
+            {% if current_user.is_authenticated %}
+                <div class="dropdown-menu">
+                    <button class="dropdown-button">⚙️</button>
+                    <div class="dropdown-content">
+                        {% if current_user.has_role('admin') %}
+                            <a href="/security_logs">{{ _('security_logs') }}</a>
+                            <a href="/role_user">{{ _('permission_management') }}</a>
+                        {% endif %}
+                        <a href="/foss_license">{{ _('foss_license') }}</a>
+                        <a href="/privacy_policy">{{ _('privacy_policy') }}</a>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="content">
+        {% if not current_user.is_authenticated %}
+        <div class="login-info">
+            <h3>{{ _('poc_id_password') }}</h3>
+            <p>🙍 user / User999! - {{ _('force_initial_password_change') }}, {{ _('password_expiry_1day') }}</p>
+            <p>🙍 admin / Admin999! - {{ _('no_password_expiry') }}</p>
+            <h3>{{ _('about_lockout') }}</h3>
+            <p>{{ _('lockout_after_3_failures') }} / {{ _('lockout_period_10min') }}</p>
+            <h3>{{ _('communication_session_lock') }}</h3>
+            <p>{{ _('auto_lock_30min') }} / {{ _('manual_lock_button_available') }}</p>
+        </div>
+        {% endif %}
+        {% block content %}{% endblock %}
+    </div>
+    {% block body_end %}{% endblock %}
+</body>
+</html>

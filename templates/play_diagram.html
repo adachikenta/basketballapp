@@ -1,0 +1,232 @@
+{% extends "base.html" %}
+{% block title %}{{ _('play_diagram_editor') }}{% endblock %}
+{% block extra_head %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
+<style>
+    .play-editor-container {
+        display: flex;
+        gap: 20px;
+        margin-bottom: 20px;
+    }
+    
+    .toolbar {
+        width: 200px;
+        background-color: #f8f9fa;
+        padding: 20px;
+        border-radius: 5px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    }
+    
+    .toolbar h3 {
+        margin-top: 0;
+        margin-bottom: 15px;
+        color: #0da12e;
+        font-size: 1.1em;
+    }
+    
+    .toolbar-section {
+        margin-bottom: 20px;
+        padding-bottom: 20px;
+        border-bottom: 1px solid #dee2e6;
+    }
+    
+    .toolbar-section:last-child {
+        border-bottom: none;
+    }
+    
+    .tool-button {
+        display: block;
+        width: 100%;
+        padding: 10px;
+        margin-bottom: 8px;
+        background-color: #ffffff;
+        border: 2px solid #dee2e6;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: all 0.2s;
+    }
+    
+    .tool-button:hover {
+        background-color: #e9ecef;
+        border-color: #0da12e;
+    }
+    
+    .tool-button.active {
+        background-color: #0da12e;
+        color: #ffffff;
+        border-color: #0da12e;
+    }
+    
+    .canvas-container {
+        flex: 1;
+        background-color: #ffffff;
+        padding: 20px;
+        border-radius: 5px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    }
+    
+    #court-canvas {
+        border: 2px solid #dee2e6;
+        border-radius: 5px;
+    }
+    
+    .diagram-info {
+        margin-bottom: 20px;
+        padding: 15px;
+        background-color: #f8f9fa;
+        border-radius: 5px;
+    }
+    
+    .diagram-info input,
+    .diagram-info textarea {
+        width: 100%;
+        padding: 8px;
+        margin-top: 5px;
+        border: 1px solid #ced4da;
+        border-radius: 4px;
+        font-size: 14px;
+    }
+    
+    .diagram-info textarea {
+        resize: vertical;
+        min-height: 60px;
+    }
+    
+    .diagram-info label {
+        display: block;
+        margin-bottom: 10px;
+        font-weight: bold;
+        color: #333;
+    }
+    
+    .action-buttons {
+        margin-top: 15px;
+        display: flex;
+        gap: 10px;
+    }
+    
+    .action-buttons button {
+        flex: 1;
+    }
+    
+    .instructions {
+        background-color: #fff3cd;
+        border: 1px solid #ffc107;
+        border-radius: 5px;
+        padding: 15px;
+        margin-top: 20px;
+    }
+    
+    .instructions h4 {
+        margin-top: 0;
+        margin-bottom: 10px;
+        color: #856404;
+        cursor: pointer;
+        user-select: none;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .instructions h4:hover {
+        opacity: 0.8;
+    }
+    
+    .toggle-icon {
+        font-size: 0.8em;
+        transition: transform 0.3s;
+    }
+    
+    .toggle-icon.expanded {
+        transform: rotate(90deg);
+    }
+    
+    .instructions-content {
+        display: none;
+        overflow: hidden;
+    }
+    
+    .instructions-content.show {
+        display: block;
+    }
+    
+    .instructions ul {
+        margin: 10px 0;
+        padding-left: 20px;
+    }
+    
+    .instructions li {
+        margin-bottom: 5px;
+        color: #856404;
+    }
+</style>
+{% endblock %}
+{% block content %}
+<div class="play-editor-container">
+    <div class="toolbar">
+        <div class="toolbar-section">
+            <h3>📐 ツール</h3>
+            <button class="tool-button active" onclick="setMode('select')">✋ 選択モード</button>
+            <button class="tool-button" onclick="setMode('player')">🔵 選手追加</button>
+            <button class="tool-button" onclick="setMode('opponent')">🔴 相手選手追加</button>
+            <button class="tool-button" onclick="setMode('arrow')">➡️ 動き矢印（曲線）</button>
+            <button class="tool-button" onclick="setMode('pass')">🏀 パス矢印（直線）</button>
+            <button class="tool-button" onclick="setMode('text')">📝 テキスト追加</button>
+        </div>
+        
+        <div class="toolbar-section">
+            <h3>🗑️ 編集</h3>
+            <button class="tool-button" onclick="deleteSelected()">🗑️ 選択を削除</button>
+            <button class="tool-button" onclick="clearCanvas()">🧹 全てクリア</button>
+        </div>
+        
+        <div class="toolbar-section">
+            <h3>💾 保存</h3>
+            <button class="tool-button" onclick="saveDiagram()">💾 保存</button>
+            <button class="tool-button" onclick="window.location.href='/play/list'">📋 一覧に戻る</button>
+        </div>
+    </div>
+    
+    <div class="canvas-container">
+        <div class="diagram-info">
+            <input type="hidden" id="diagram-id" value="">
+            <label>
+                プレー名:
+                <input type="text" id="diagram-name" placeholder="例: ピック&ロール基本" required>
+            </label>
+            <label>
+                説明:
+                <textarea id="diagram-description" placeholder="プレーの目的やポイントを記入"></textarea>
+            </label>
+        </div>
+        
+        <canvas id="court-canvas" width="800" height="600"></canvas>
+    </div>
+</div>
+<div class="instructions">
+    <h4 onclick="toggleInstructions()">
+        <span class="toggle-icon">▶</span>
+        🏀 使い方ヒント
+    </h4>
+    <div class="instructions-content" id="instructions-content">
+        <ul>
+            <li><strong>選手配置:</strong> 左のツールバーから「選手追加」または「相手選手追加」を選択し、コート上をクリック</li>
+            <li><strong>動きの矢印:</strong> 「動き矢印（曲線）」を選択し、コート上を最大5回クリックしてポイントを追加 → 各ポイント（ピンク/シアン）をドラッグして曲線を調整</li>
+            <li><strong>パス矢印:</strong> 「パス矢印（直線）」を選択し、始点と終点をクリック → オレンジ色の破線矢印でパスを表現</li>
+            <li><strong>メモ追加:</strong> 「テキスト追加」を選択し、コート上をクリックして入力</li>
+            <li><strong>編集・移動:</strong> 「選択モード」で要素をドラッグして移動、曲線矢印のアンカーポイント（丸）をドラッグして曲線を調整</li>
+            <li><strong>削除:</strong> 要素を選択してから「選択を削除」ボタンをクリック</li>
+        </ul>
+    </div>
+</div>
+<script>
+function toggleInstructions() {
+    const content = document.getElementById('instructions-content');
+    const icon = document.querySelector('.toggle-icon');
+    content.classList.toggle('show');
+    icon.classList.toggle('expanded');
+}
+</script>
+<script src="{{ url_for('static', filename='js/court_editor.js') }}"></script>
+{% endblock %}
