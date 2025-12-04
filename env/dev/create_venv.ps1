@@ -8,14 +8,15 @@ if (Get-Command scoop -ErrorAction SilentlyContinue) {
     Invoke-Expression (new-object net.webclient).downloadstring('https://get.scoop.sh')
     Write-Host "scoop installed successfully." -ForegroundColor Green
 }
-# check if git is installed
-if (Get-Command git -ErrorAction SilentlyContinue) {
-    Write-Host "git is already installed." -ForegroundColor Green
+# check if git of scoop is installed
+$scoopgit = "$env:USERPROFILE\scoop\apps\git\current\bin\git.exe"
+if (Test-Path $scoopgit) {
+    Write-Host "git of scoop is already installed." -ForegroundColor Green
 } else {
     # install git
-    Write-Host "git is not installed. Installing git..." -ForegroundColor Yellow
+    Write-Host "git of scoop is not installed. Installing git..." -ForegroundColor Yellow
     scoop install git
-    Write-Host "git installed successfully." -ForegroundColor Green
+    Write-Host "git of scoop installed successfully." -ForegroundColor Green
 }
 # check sslbackend of git
 $gitConfig = git config --global -l
@@ -36,28 +37,29 @@ if (scoop bucket list | Select-String -Pattern "versions") {
     scoop bucket add versions
     Write-Host "versions bucket added successfully." -ForegroundColor Green
 }
-# check if msgfmt installed
-if (Get-Command msgfmt -ErrorAction SilentlyContinue) {
-    Write-Host "msgfmt is already installed." -ForegroundColor Green
+# check if gettext of scoop installed
+$scoopgettext = "$env:USERPROFILE\scoop\apps\gettext\current\bin\msgfmt.exe"
+if (Test-Path $scoopgettext) {
+    Write-Host "gettext of scoop is already installed." -ForegroundColor Green
 } else {
     # install gettext
     Write-Host "gettext is not installed. Installing gettext..." -ForegroundColor Yellow
     scoop install gettext
 }
-$pythonversion = "python3"
-# check if python is installed
-if (Get-Command $pythonversion -ErrorAction SilentlyContinue) {
-    Write-Host "$pythonversion is already installed." -ForegroundColor Green
+# check if python of scoop is installed
+$scooppython = "$env:USERPROFILE\scoop\apps\python\current\python.exe"
+if (Test-Path $scooppython) {
+    Write-Host "python of scoop is already installed." -ForegroundColor Green
 } else {
     # install python
-    Write-Host "$pythonversion is not installed. Installing $pythonversion..." -ForegroundColor Yellow
-    scoop install $pythonversion
+    Write-Host "python of scoop is not installed. Installing python..." -ForegroundColor Yellow
+    scoop install python
 }
 # create a Python virtual environment in the 'venv' directory
 if (Test-Path -Path $venvpath) {
     Write-Host "Virtual environment already exists." -ForegroundColor Green
 } else {
     Write-Host "Creating virtual environment ..." -ForegroundColor Yellow
-    python3 -m venv $venvpath
+    & $scooppython -m venv $venvpath
 }
 Write-Host "Virtual environment is located at $venvpath" -ForegroundColor Green
