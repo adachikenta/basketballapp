@@ -4,15 +4,15 @@ $appProcess = $null
 $reportPath = Join-Path -Path (Get-Location) -ChildPath "__tests__/report_e2e.html"
 function Start-FlaskApp {
     Write-Host "Starting Flask application in the background..." -ForegroundColor Green
-    
+
     # Activate virtual environment
     . $venvPath\Scripts\Activate.ps1
-    
+
     # Start Flask app in the background with testing environment
     $env:FLASK_ENV = "testing"
     $env:FLASK_APP = "app.py"
     $port = 5000
-    
+
     # Check if port is already in use
     try {
         $portInUse = Get-NetTCPConnection -LocalPort $port -ErrorAction SilentlyContinue
@@ -30,16 +30,16 @@ function Start-FlaskApp {
     } catch {
         Write-Host "Could not check for port conflicts: $_" -ForegroundColor Yellow
     }
-    
+
     # Start Flask app with explicit host and port
     $appProcess = Start-Process -FilePath "$venvPath\Scripts\python.exe" -ArgumentList "app.py" -PassThru
-    
+
     # Wait for app to initialize (checking if the server is up)
     Write-Host "Waiting for Flask app to initialize..." -ForegroundColor Yellow
     $startTime = Get-Date
     $timeout = New-TimeSpan -Seconds 20
     $serverUp = $false
-    
+
     while (-not $serverUp -and ((Get-Date) - $startTime) -lt $timeout) {
         try {
             $connection = New-Object System.Net.Sockets.TcpClient("localhost", $port)
@@ -51,16 +51,16 @@ function Start-FlaskApp {
             Start-Sleep -Milliseconds 500
         }
     }
-    
+
     if ($serverUp) {
         Write-Host "Flask application is now running on port $port" -ForegroundColor Green
     } else {
         Write-Host "Warning: Could not confirm Flask app is running. Proceeding anyway..." -ForegroundColor Yellow
     }
-    
+
     # Give a bit more time for app to fully initialize
     Start-Sleep -Seconds 2
-    
+
     return $appProcess
 }
 function Stop-FlaskApp {
@@ -68,9 +68,9 @@ function Stop-FlaskApp {
         [Parameter(Mandatory=$true)]
         [System.Diagnostics.Process]$Process
     )
-    
+
     Write-Host "Stopping Flask application..." -ForegroundColor Yellow
-    
+
     if (-not $Process.HasExited) {
         try {
             # Try graceful termination first
@@ -92,12 +92,12 @@ function Stop-FlaskApp {
     } else {
         Write-Host "Flask application had already stopped." -ForegroundColor Yellow
     }
-    
+
     # Make sure to clean up any remaining Flask processes if needed
     try {
         # Get all Python processes
         $pythonProcesses = Get-Process -Name "python" -ErrorAction SilentlyContinue
-        
+
         foreach ($proc in $pythonProcesses) {
             try {
                 # Get command line for this process using WMI
@@ -123,7 +123,6 @@ try {
     $appProcess = Start-FlaskApp
     & "$venvPath\Scripts\pytest.exe" ./tests/e2e_playwright.py -v --html=$reportPath
     $testResult = $LASTEXITCODE
-    
 } catch {
     Write-Host "Error: $_" -ForegroundColor Red
     $testResult = 1
@@ -132,13 +131,13 @@ try {
     if ($appProcess -and -not $appProcess.HasExited) {
         Stop-FlaskApp -Process $appProcess
     }
-    
+
     # Additional cleanup to ensure all related processes are terminated
     try {
         Write-Host "Performing final cleanup of any remaining processes..." -ForegroundColor Yellow
         # Get all Python processes
         $pythonProcesses = Get-Process -Name "python" -ErrorAction SilentlyContinue
-        
+
         foreach ($proc in $pythonProcesses) {
             try {
                 # Get command line for this process using WMI
@@ -154,23 +153,33 @@ try {
     } catch {
         Write-Host "Error during final cleanup: $_" -ForegroundColor Yellow
     }
-    
+
     # Deactivate virtual environment
     if (Get-Command "deactivate" -ErrorAction SilentlyContinue) {
         Write-Host "Deactivating virtual environment..." -ForegroundColor Yellow
         deactivate
     }
-    
+
     if ($testResult -eq 0) {
         Write-Host "Tests completed successfully!" -ForegroundColor Green
+
+        Write-Host "Done!" -ForegroundColor Green
+        if (Test-Path -Path $reportPath) {
+            Start-Process $reportPath
+        }
+
+        # Generate coverage report
+        $reportCoverageScript = Join-Path $PSScriptRoot "report_coverage_e2e.ps1"
+        if (Test-Path -Path $reportCoverageScript) {
+            Write-Host "`nGenerating E2E coverage report..." -ForegroundColor Cyan
+            & $reportCoverageScript
+            if ($LASTEXITCODE -ne 0) {
+                Write-Host "E2E coverage report generation failed with exit code: $LASTEXITCODE" -ForegroundColor Red
+                exit $LASTEXITCODE
+            }
+        }
     } else {
         Write-Host "Tests failed or had errors. Exit code: $testResult" -ForegroundColor Red
+        exit $testResult
     }
-    
-    Write-Host "Done!" -ForegroundColor Green
-    if (Test-Path -Path $reportPath) {
-        Start-Process $reportPath
-    }
-    # Force exit the script to ensure all child processes are terminated
-    [System.Environment]::Exit(0)
 }
