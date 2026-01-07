@@ -10,7 +10,7 @@ cd /d "%~dp0"
 powershell -ExecutionPolicy Bypass -NoLogo -File .\env\dev\po2mo.ps1
 REM po2mo.ps1 failure is not critical, continue anyway
 
-powershell -ExecutionPolicy Bypass -NoLogo -File .\env\dev\start_app.ps1
+start /wait powershell -ExecutionPolicy Bypass -NoLogo -File .\env\dev\start_app.ps1
 if %ERRORLEVEL% NEQ 0 (goto :catch)
 
 :catch
