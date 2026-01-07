@@ -1097,7 +1097,22 @@ def password_changed_handler(signal_sender_flask_app, user):
 ###################################################
 # 開発テスト用
 ###################################################
-cov = coverage.Coverage(data_file=".coverage")
+cov = coverage.Coverage(
+    data_file=".coverage",
+    source=["."],
+    omit=[
+        "tests/*",
+        "./tests/*",
+        "*/tests/*",
+        "*/venv/*",
+        "*/site-packages/*",
+        "*/Lib/*",
+        "*\\Lib\\*",
+        "*\\site-packages\\*",
+        "setup.py",
+        "conftest.py"
+    ]
+)
 
 
 @app.route('/covstart', methods=['POST'])

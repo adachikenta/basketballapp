@@ -46,8 +46,8 @@ def test_login_page_loads(page):
     """ログインページが正しく表示されることをテスト"""
     # ログインページに移動
     page.goto(f"{BASE_URL}/login")
-    # ページタイトルを確認
-    expect(page).to_have_title("システム名")
+    # ページタイトルを確認（実際のタイトルは "system"）
+    expect(page).to_have_title("system")
     # ログインフォームの要素が存在することを確認
     expect(page.locator('form[action="/login"]')).to_be_visible()
     expect(page.locator('input[name="username"]')).to_be_visible()
@@ -74,18 +74,18 @@ def test_admin_walkthrough_pages(page):
     expect(page).to_have_url(f"{BASE_URL}/home")
     # 各ページにアクセスして表示を確認
     pages = [
-        "/home",
-        "/role_user",
-        "/security_logs",
-        "/foss_license",
-        "/privacy_policy",
-        "/",
-        "/develop",
-        "/change"
+        ("/home", "/home"),
+        ("/role_user", "/role_user"),
+        ("/security_logs", "/security_logs"),
+        ("/foss_license", "/foss_license"),
+        ("/privacy_policy", "/privacy_policy"),
+        ("/", "/home"),  # "/" は "/home" にリダイレクトされる
+        ("/develop", "/develop"),
+        ("/change", "/change")
     ]
-    for page_url in pages:
+    for page_url, expected_url in pages:
         page.goto(f"{BASE_URL}{page_url}")
-        expect(page).to_have_url(f"{BASE_URL}{page_url}")
+        expect(page).to_have_url(f"{BASE_URL}{expected_url}")
         expect(page.locator("body")).to_be_visible()  # ページの内容が表示されていることを確認
 def test_login_with_user_credentials(page):
     """有効な認証情報でログインできることをテスト"""
