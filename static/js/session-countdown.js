@@ -2,16 +2,20 @@
  * セッションタイムアウトカウントダウン機能
  * 無操作時にカウントダウンを表示し、セッションロックを行う
  */
+
 // セッション設定（デフォルト値。実際の値はサーバーから取得）
 let SESSION_TIMEOUT = 1800; // 30分（デフォルト値）
 let WARNING_THRESHOLD = 180; // 3分前から警告を表示
+
 // 状態管理変数
 let remainingSeconds = SESSION_TIMEOUT; // サーバーから取得した残り時間
 let activityCheckTimer;
 let sidebarCountdownTimer;
 let statusSyncTimer;
+
 // カウントダウン表示用要素
 let sidebarCountdownElement;
+
 // 翻訳データ
 let translations = {
     'session_remaining_time': 'セッション有効時間', // デフォルト日本語
@@ -19,8 +23,10 @@ let translations = {
     'change_password': 'パスワード変更',
     'logout': 'ログアウト'
 };
+
 // UI要素への参照を保持
 let lockButton, changePasswordButton, logoutButton;
+
 // DOM読み込み後に初期化
 document.addEventListener('DOMContentLoaded', function() {    
     // HTML要素のlang属性から現在のページ言語を取得
@@ -71,6 +77,7 @@ document.addEventListener('DOMContentLoaded', function() {
         setupLanguageChangeDetection();
     });
 });
+
 // 翻訳データを取得する
 async function fetchTranslations() {
     try {
@@ -132,6 +139,7 @@ async function fetchTranslations() {
         throw error;
     }
 }
+
 // UI要素のテキストを現在の翻訳データで更新
 function updateUITexts() {
     try {
@@ -159,6 +167,7 @@ function updateUITexts() {
     }
     
 }
+
 // サーバーからセッション設定を取得
 async function fetchSessionConfig() {
     try {
@@ -174,6 +183,7 @@ async function fetchSessionConfig() {
         console.error('セッション設定の取得でエラー発生:', error);
     }
 }
+
 // サーバーとの定期的な同期（残り時間の取得とステータスチェック）
 function startSessionSync() {
     interval = 120000; // 120秒ごとに同期
@@ -183,9 +193,11 @@ function startSessionSync() {
     statusSyncTimer = setInterval(() => {
         syncWithServer();
     }, interval);
+
     // 初回は即時実行
     syncWithServer();
 }
+
 // サーバーと同期してセッション情報を更新
 async function syncWithServer() {
     try {
@@ -217,6 +229,7 @@ async function syncWithServer() {
         console.error('サーバー同期エラー:', error);
     }
 }
+
 // アニメーションスタイルを追加（サイドバーカウントダウンでも使用する）
 function addAnimationStyles() {
     const style = document.createElement('style');
@@ -233,6 +246,7 @@ function addAnimationStyles() {
     `;
     document.head.appendChild(style);
 }
+
 // トップバーのカウントダウン表示を更新
 function updateSidebarCountdown() {
     if (sidebarCountdownElement) {
@@ -250,14 +264,17 @@ function updateSidebarCountdown() {
         }
     }
 }
+
 // セッションロックを実行
 function lockSession() {
     window.location.href = '/lock_session';
 }
+
 // 今すぐロックボタン用の関数
 function lockSessionNow() {
     window.location.href = '/lock_session';
 }
+
 // トップバーにカウントダウン表示を作成
 function createSidebarCountdown() {
     // トップバー要素を取得
@@ -283,6 +300,7 @@ function createSidebarCountdown() {
         lockButton.textContent = translations.lock_now;
     }
 }
+
 // トップバーのカウントダウンを開始
 function startSidebarCountdown() {
     // 1秒ごとにカウントダウンを更新（ローカルカウントダウン）
@@ -301,6 +319,7 @@ function startSidebarCountdown() {
         }
     }, 1000);
 }
+
 // 時間のフォーマット（MM:SS形式）
 function formatTime(seconds) {
     // 小数点以下を切り捨てて整数に変換
@@ -309,6 +328,7 @@ function formatTime(seconds) {
     const secs = totalSeconds % 60;
     return `${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
 }
+
 // 言語変更を検出して翻訳を更新
 function setupLanguageChangeDetection() {
     // ページロード時に現在選択されている言語を取得
@@ -351,6 +371,7 @@ function setupLanguageChangeDetection() {
         });
     }
 }
+
 // DOM読み込み後に初期化（既存のコードに追加）
 document.addEventListener('DOMContentLoaded', function() {
     // 既存の処理に加えて言語変更検出を設定

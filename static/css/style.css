@@ -1,8 +1,10 @@
 @charset "UTF-8";
+
 /* 基本設定 */
 * {
   box-sizing: border-box;
 }
+
 body {
   background: #fff;
   color: #333;
@@ -12,13 +14,16 @@ body {
   margin: 0;
   padding: 0;
 }
+
 a {
   color: inherit;
   text-decoration: none;
 }
+
 a:hover {
   opacity: 0.7;
 }
+
 /* トップバー */
 .topbar {
   background: linear-gradient(135deg, #0da12e 0%, #0c8c26 100%);
@@ -36,6 +41,7 @@ a:hover {
   min-height: 56px;
   height: auto;
 }
+
 .topbar-left,
 .topbar-right {
   display: flex;
@@ -43,6 +49,7 @@ a:hover {
   gap: 12px;
   flex-wrap: wrap;
 }
+
 .topbar a {
   color: #ffffff;
   padding: 8px 16px;
@@ -53,11 +60,13 @@ a:hover {
   font-weight: 500;
   letter-spacing: 0.2px;
 }
+
 .topbar a:hover {
   background-color: rgba(255, 255, 255, 0.15);
   opacity: 1;
   transform: translateY(-1px);
 }
+
 .topbar .logo {
   font-weight: 700;
   font-size: 18px;
@@ -78,10 +87,12 @@ a:hover {
   transform: translateY(-1px);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
+
 /* 言語選択 */
 .language-form {
   margin: 0;
 }
+
 .language-form select {
   background-color: rgba(255, 255, 255, 0.95);
   color: #0da12e;
@@ -95,10 +106,12 @@ a:hover {
   transition: all 0.2s ease;
   height: 36px;
 }
+
 .language-form select:hover {
   background-color: #ffffff;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
+
 /* トップバーのカウントダウンとボタン */
 .topbar-countdown {
   color: #ffffff;
@@ -113,12 +126,14 @@ a:hover {
   height: 36px;
   letter-spacing: 0.3px;
 }
+
 .topbar-countdown.warning {
   color: #ffffff;
   background-color: rgba(255, 107, 107, 0.85);
   animation: pulse 1s infinite;
   font-weight: 700;
 }
+
 .topbar-button {
   color: #ffffff;
   background-color: rgba(255, 255, 255, 0.18);
@@ -138,23 +153,27 @@ a:hover {
   box-sizing: border-box;
   letter-spacing: 0.2px;
 }
+
 .topbar-button:hover {
   background-color: rgba(255, 255, 255, 0.28);
   opacity: 1;
   transform: translateY(-1px);
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
+
 @keyframes pulse {
   0% { transform: scale(1); }
   50% { transform: scale(1.05); }
   100% { transform: scale(1); }
 }
+
 /* メインコンテンツ */
 .content {
   padding: 20px;
   max-width: 1400px;
   margin: 0 auto;
 }
+
 /* ログイン情報表示 */
 .login-info {
   background-color: #f8f9fa;
@@ -163,15 +182,18 @@ a:hover {
   padding: 20px;
   margin-bottom: 20px;
 }
+
 .login-info h3 {
   color: #0da12e;
   margin-top: 0;
   margin-bottom: 10px;
 }
+
 .login-info p {
   margin: 5px 0;
   color: #333;
 }
+
 /* アラート */
 .alert {
   padding: 15px;
@@ -179,20 +201,24 @@ a:hover {
   border: 1px solid transparent;
   border-radius: 4px;
 }
+
 .alert-success {
   color: #155724;
   background-color: #d4edda;
   border-color: #c3e6cb;
 }
+
 .alert-danger {
   color: #721c24;
   background-color: #f8d7da;
   border-color: #f5c6cb;
 }
+
 /* フォーム */
 .form-group {
   margin-bottom: 15px;
 }
+
 .form-control {
   display: block;
   width: 100%;
@@ -206,28 +232,34 @@ a:hover {
   border-radius: 4px;
   transition: border-color 0.15s ease-in-out;
 }
+
 .form-control:focus {
   border-color: #0da12e;
   outline: none;
 }
+
 .form-control.is-invalid {
   border-color: #dc3545;
 }
+
 .invalid-feedback {
   display: none;
   color: #dc3545;
   font-size: 0.875em;
   margin-top: 0.25rem;
 }
+
 .invalid-feedback.d-block {
   display: block;
 }
+
 .form-text {
   display: block;
   margin-top: 0.25rem;
   font-size: 0.875em;
   color: #6c757d;
 }
+
 /* ボタン */
 .btn {
   display: inline-block;
@@ -240,20 +272,24 @@ a:hover {
   cursor: pointer;
   transition: all 0.15s ease-in-out;
 }
+
 .btn-primary {
   color: #fff;
   background-color: #0da12e;
   border-color: #0da12e;
 }
+
 .btn-primary:hover {
   background-color: #0a2580;
   border-color: #0a2580;
 }
+
 button:disabled {
   background-color: #e6e6fa;
   cursor: not-allowed;
   opacity: 0.6;
 }
+
 /* ログインコンテナ */
 .custom-login-container {
   max-width: 400px;
@@ -263,33 +299,40 @@ button:disabled {
   border-radius: 5px;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
 }
+
 .custom-login-container h2 {
   margin-bottom: 20px;
   text-align: center;
   color: #0da12e;
 }
+
 /* テーブル */
 .table {
   width: 100%;
   border-collapse: collapse;
   margin-bottom: 20px;
 }
+
 .table th,
 .table td {
   padding: 8px 16px;
   text-align: left;
   border: 1px solid #dddddd;
 }
+
 .table th {
   background-color: #f8f9fa;
   font-weight: bold;
 }
+
 .table-bordered {
   border: 1px solid #dddddd;
 }
+
 .text-center {
   text-align: center;
 }
+
 /* ページネーション */
 .pagination {
   display: flex;
@@ -298,16 +341,19 @@ button:disabled {
   padding: 0;
   margin: 20px 0;
 }
+
 .pagination li a {
   padding: 5px 10px;
   border: 1px solid #ddd;
   border-radius: 3px;
   color: #0da12e;
 }
+
 .pagination li.active a {
   background-color: #0da12e;
   color: #fff;
 }
+
 .pagination li a:hover {
   background-color: #f8f9fa;
 }

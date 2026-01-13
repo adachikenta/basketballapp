@@ -6,6 +6,7 @@ from datetime import datetime, timedelta
 from functools import wraps
 from urllib.parse import urlparse
 import coverage
+
 import plotly.graph_objs as go
 import plotly.offline as pyo
 from flask import (Flask, flash, g, jsonify, redirect, render_template,
@@ -22,33 +23,41 @@ from flask_session import Session
 from flask_sqlalchemy import SQLAlchemy
 from wtforms import Form, StringField
 from wtforms.validators import DataRequired
+
 app = Flask(__name__, template_folder="templates")
 db_path = os.path.join(app.root_path, "__data__", "ews.sqlite3")
 os.makedirs(os.path.dirname(db_path), exist_ok=True)
 app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{db_path}"
+
 db = SQLAlchemy(app)
+
 ###################################################
 # セッション管理（flask_session + filesystem）
 ###################################################
 app.config["SECURITY_REMEMBER_ME"] = False
+
 app.config["SESSION_TYPE"] = "filesystem"
 app.config["SESSION_PERMANENT"] = False
 app.config["SESSION_USE_SIGNER"] = True
 app.config["SESSION_KEY_PREFIX"] = "ews_session:"
 app.config["SESSION_SERIALIZATION_FORMAT"] = "json"
+
 session_path = os.path.join(app.root_path, "__data__", "flask_session_files")
 app.config["SESSION_FILE_DIR"] = session_path
 app.config["SESSION_FILE_THRESHOLD"] = (
     100  # セッションファイルの数が100を超えた場合に古いファイルを削除
 )
+
 app.config["SESSION_COOKIE_NAME"] = "ews_session"
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["SESSION_COOKIE_SECURE"] = False  # HTTPSを使用する場合はTrueに設定
 app.config["SESSION_COOKIE_SAMESITE"] = "Lax"  # CSRF対策のためにSameSite属性を設定
+
 app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(
     minutes=30
 )  # 30分のセッションタイムアウト
 # app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(seconds=10)
+
 sess = Session(app)
 sess.init_app(app)
 
@@ -83,6 +92,7 @@ class UserSession(db.Model):
     user_agent = db.Column(
         db.String(255), nullable=True
     )
+
     # ユーザーとのリレーション
     user = db.relationship(
         "User",
@@ -96,9 +106,11 @@ def check_session():
     # ログインユーザーのみチェック
     if current_user.is_authenticated:
         session_id = request.cookies.get(app.config["SESSION_COOKIE_NAME"])
+
         # セッションIDがない場合は処理しない
         if not session_id:
             return
+
         # ログアウト、ログイン、セッションロック関連のパス、APIパスはチェックから除外
         if (
             request.path in [
@@ -110,15 +122,18 @@ def check_session():
             or request.path.startswith("/api/session/status")
         ):
             return
+
         # DB内のセッション情報を取得
         user_session = UserSession.query.filter_by(
             user_id=current_user.id, session_id=session_id
         ).first()
+
         # セッションがDBに存在しない場合、新規作成（ログイン直後の場合など）
         if not user_session and request.path != "/login":
             # 既存のセッションがある場合は削除（1ユーザー1セッション制限）
             UserSession.query.filter_by(user_id=current_user.id).delete()
             db.session.commit()
+
             # 新しいセッションを作成
             user_session = UserSession(
                 user_id=current_user.id,
@@ -151,6 +166,7 @@ def check_session():
                 ):
                     # セッションが削除される前にパスを保存
                     session["redirect_after_login"] = request.path
+
                 # Flask-Securityのユーザーセッションをクリア
                 logout_user()
                 flash(
@@ -158,6 +174,7 @@ def check_session():
                     "warning",
                 )
                 return redirect(url_for("security.login"))
+
             # 最終アクティビティ時間を更新
             user_session.last_activity = datetime.utcnow()
             db.session.commit()
@@ -171,6 +188,7 @@ def check_expired_sessions():
         return
     if request.path.startswith("/favicon"):
         return
+
     # セッションの有効期限をチェックして必要に応じてロック
     lock_expired_sessions()
 
@@ -183,8 +201,10 @@ def lock_expired_sessions():
         UserSession.last_activity < expiry_time,
         UserSession.is_locked.is_(False)
     ).all()
+
     for user_session in expired_sessions:
         user_session.is_locked = True
+
         # セッションロックをログに記録
         user = User.query.get(user_session.user_id)
         if user:
@@ -193,6 +213,7 @@ def lock_expired_sessions():
                 "SESSION_AUTO_LOCK",
                 f"{message} {user.username} - {user_session.session_id}",
             )
+
             # 現在のページパスをセッションに保存（再ログイン後のリダイレクト用）
             if request.path and not request.path.startswith(
                 (
@@ -204,6 +225,7 @@ def lock_expired_sessions():
                 )
             ):
                 session["redirect_after_login"] = request.path
+
     if expired_sessions:
         db.session.commit()
 
@@ -215,12 +237,14 @@ def lock_session():
     """セッションを手動でロックする"""
     session_id = request.cookies.get(app.config["SESSION_COOKIE_NAME"])
     username = current_user.username if current_user.is_authenticated else None
+
     # 現在のページURLをセッションに保存して、再ログイン後に元のページに戻れるようにする
     referrer = request.referrer
     if referrer:
         # アプリケーションのURL内の相対パスを抽出
         parsed_url = urlparse(referrer)
         path = parsed_url.path
+
         # 安全なパスのみを保存（ログイン関連のパスは除外）
         excluded_paths = [
             "/login",
@@ -231,10 +255,12 @@ def lock_session():
         ]
         if path and path not in excluded_paths:
             session["redirect_after_login"] = path
+
     if session_id and username:
         user_session = UserSession.query.filter_by(
             user_id=current_user.id, session_id=session_id
         ).first()
+
         if user_session:
             user_session.is_locked = True
             db.session.commit()
@@ -246,8 +272,10 @@ def lock_session():
                 "セッションをロックしました。ログイン画面からログインして再開できます。",
                 "info",
             )
+
     # セッション関連のフラッシュデータを保存してからログアウト
     logout_user()
+
     # ログイン画面にリダイレクト
     return redirect(url_for("security.login"))
 
@@ -258,17 +286,20 @@ def lock_session():
 def unlock_session(signal_sender_flask_app, user, **extra):
     """ユーザーが再ログインした際にセッションをアンロックする"""
     session_id = request.cookies.get(app.config["SESSION_COOKIE_NAME"])
+
     if session_id:
         # 既存のロックされたセッションを検索
         user_session = UserSession.query.filter_by(
             user_id=user.id, session_id=session_id
         ).first()
+
         if user_session:
             was_locked = user_session.is_locked
             # セッションをアンロック
             user_session.is_locked = False
             user_session.last_activity = datetime.utcnow()
             db.session.commit()
+
             # ロック解除をログに記録
             if was_locked:
                 log_security_event(
@@ -292,6 +323,7 @@ def unlock_session(signal_sender_flask_app, user, **extra):
                     if request.user_agent.string
                     else None
                 )
+
                 # このユーザーの他のセッションを削除
                 UserSession.query.filter(
                     UserSession.user_id == user.id,
@@ -311,11 +343,14 @@ def unlock_session(signal_sender_flask_app, user, **extra):
                         user,
                     )
                     UserSession.query.filter_by(user_id=user.id).delete()
+
             db.session.commit()
+
             # セッションが既に存在するかチェック
             existing_session = UserSession.query.filter_by(
                 session_id=session_id
             ).first()
+
             if existing_session:
                 # 既存のセッションが見つかった場合は更新する
                 existing_session.user_id = user.id
@@ -379,21 +414,27 @@ def get_session_status():
     """セッションの状態情報をJSONで返す（クライアント側のカウントダウン同期用）"""
     if not current_user.is_authenticated:
         return jsonify({"error": "Unauthorized"}), 401
+
     session_id = request.cookies.get(app.config["SESSION_COOKIE_NAME"])
     if not session_id:
         return jsonify({"error": "No session"}), 400
+
     user_session = UserSession.query.filter_by(
         user_id=current_user.id, session_id=session_id
     ).first()
+
     if not user_session:
         return jsonify({"error": "Invalid session"}), 400
+
     # セッションの最終アクティビティからの経過時間を計算
     now = datetime.utcnow()
     last_activity = user_session.last_activity
     elapsed_seconds = (now - last_activity).total_seconds()
+
     # セッションタイムアウトまでの残り時間を計算
     timeout_seconds = app.config["PERMANENT_SESSION_LIFETIME"].total_seconds()
     remaining_seconds = max(0, timeout_seconds - elapsed_seconds)
+
     return jsonify(
         {
             "is_locked": user_session.is_locked,
@@ -437,6 +478,7 @@ class SecurityLog(db.Model):
         db.String(255),
         nullable=True
     )
+
     # ユーザーとのリレーション（オプショナル）
     user = db.relationship(
         "User",
@@ -493,6 +535,7 @@ def log_security_event(event_type, description, user=None):
         if user
         else (current_user.id if current_user.is_authenticated else None)
     )
+
     if request.user_agent.string:
         user_agent = request.user_agent.string[:255]
     else:
@@ -584,8 +627,10 @@ def set_language():
             # 現在の言語と異なる場合のみセッションを更新
             session["language"] = language
             session.modified = True
+
     # リファラーURLを取得
     next_url = request.referrer or url_for("index")
+
     # URLから既存の lang_switched パラメータを削除
     if "lang_switched=" in next_url:
         # URLにクエリパラメータがある場合
@@ -602,11 +647,13 @@ def set_language():
                 next_url = base_url + "?" + "&".join(query_parts)
             else:
                 next_url = base_url
+
     # 言語切り替えフラグを付加（JavaScriptで検出用）
     if "?" in next_url:
         next_url += "&lang_switched=1"
     else:
         next_url += "?lang_switched=1"
+
     return redirect(next_url)
 
 
@@ -615,30 +662,36 @@ def get_session_translations():
     """セッション管理用のJavaScript用翻訳データをJSONで提供"""
     # クエリパラメータから言語を取得（指定がなければセッション/ブラウザ設定）
     requested_lang = request.args.get("lang")
+
     if requested_lang and requested_lang in LANGUAGES:
         # 一時的に言語を変更して翻訳を取得
         original_lang = session.get("language")
+
         # リクエストで明示的に指定された言語に設定
         with app.test_request_context():
             session["language"] = requested_lang
+
             translations = {
                 "session_remaining_time": gettext("session_remaining_time"),
                 "lock_now": gettext("lock_now"),
                 "change_password": gettext("change_password"),
                 "logout": gettext("logout"),
             }
+
             # 元の言語設定に戻す
             if original_lang:
                 session["language"] = original_lang
             else:
                 session.pop("language", None)
     else:
+
         translations = {
             "session_remaining_time": gettext("session_remaining_time"),
             "lock_now": gettext("lock_now"),
             "change_password": gettext("change_password"),
             "logout": gettext("logout"),
         }
+
     return jsonify(translations)
 
 
@@ -658,7 +711,6 @@ def format_date(timestamp):
     convtime = f"{timestamp[8:10]}:{timestamp[10:12]}:{timestamp[12:14]}"
     return f"{convdate} {convtime}"
 
-
 ###################################################
 # ロールとユーザー管理
 ###################################################
@@ -672,6 +724,7 @@ initial_users = {
     "admin": {"name": "admin", "pass": "Admin999!", "role": "admin"},
     "user": {"name": "user", "pass": "User999!", "role": "user"}
 }
+
 app.config["SECRET_KEY"] = "super-secret"
 app.config["SECURITY_REGISTERABLE"] = False
 app.config["SECURITY_RECOVERABLE"] = False
@@ -733,6 +786,7 @@ app.config["SECURITY_MSG_LOGIN_ATTEMPTS_EXCEEDED"] = (
     "ログイン試行回数が上限を超えました。",
     "error",
 )
+
 roles_users = db.Table(
     "roles_users",
     db.Column("user_id", db.String(36), db.ForeignKey("user.id")),
@@ -823,14 +877,17 @@ class CustomLoginForm(LoginForm):
             ):
                 self.password.errors = ["パスワードを入力してください"]
             return False
+
         # usernameでユーザーを探す
         self.user = User.query.filter_by(username=self.username.data).first()
+
         if self.user is None:
             # ユーザーが見つからない場合、具体的なエラーではなく一般的なエラーメッセージを表示
             self.username.errors.append("ユーザー名もしくはパスワードが間違っています")
             # フラッシュメッセージも設定（両方表示される場合があるが問題ない）
             flash("ユーザー名もしくはパスワードが間違っています", "error")
             return False
+
         # アカウントがロックされているかチェック
         if (
             self.user.account_lockout_until
@@ -841,11 +898,14 @@ class CustomLoginForm(LoginForm):
                 ("ログイン試行回数が上限を超えました。", "error"),
             )
             error_msg = lockout_message[0].format()
+
             self.username.errors.append(error_msg)
             flash(error_msg, "error")
             return False
+
         if not verify_and_update_password(self.password.data, self.user):
             self.user.login_attempts += 1
+
             # 失敗回数が上限を超えたらアカウントをロック
             login_attempt_limit = app.config.get(
                 "SECURITY_LOGIN_ATTEMPT_LIMIT",
@@ -860,6 +920,7 @@ class CustomLoginForm(LoginForm):
                     seconds=lockout_period
                 )
                 self.user.account_lockout_until = datetime.utcnow() + delta
+
                 lockout_message = app.config.get(
                     "SECURITY_MSG_LOGIN_ATTEMPTS_EXCEEDED",
                     ("ログイン試行回数が上限を超えました。", "error"),
@@ -873,13 +934,16 @@ class CustomLoginForm(LoginForm):
                     "ユーザー名もしくはパスワードが間違っています"
                 )
                 flash("ユーザー名もしくはパスワードが間違っています", "error")
+
             db.session.commit()
             return False
+
         # ログイン成功時は失敗カウントとロックをリセット
         self.user.login_attempts = 0
         self.user.account_lockout_until = None
         self.user.last_login_at = datetime.utcnow()
         db.session.commit()
+
         return True
 
 
@@ -890,6 +954,7 @@ app.config["SECURITY_CHANGE_PASSWORD_TEMPLATE"] = (
 
 class CustomChangePasswordForm(ChangePasswordForm):
     """カスタムパスワード変更フォーム"""
+
     def validate(self, extra_validators=None, **kwargs):
         has_errors = False
         if not Form.validate(
@@ -898,6 +963,7 @@ class CustomChangePasswordForm(ChangePasswordForm):
             **kwargs
         ):
             has_errors = True
+
         # 現在のパスワードの検証
         user = current_user
         is_current_password_valid = verify_and_update_password(
@@ -914,13 +980,16 @@ class CustomChangePasswordForm(ChangePasswordForm):
                     "新しいパスワードは現在のパスワードと異なるものを設定してください。"
                 )
                 has_errors = True
+
         # 新しいパスワードの長さチェック（8文字以上、128文字以下）
         if len(self.new_password.data) < 8:
             self.password.errors.append("パスワードは8文字以上必要です。")
             has_errors = True
+
         if len(self.new_password.data) > 128:
             self.password.errors.append("パスワードは128文字以下である必要があります。")
             has_errors = True
+
         # 新しいパスワードの文字種チェック
         if not re.search(r"[A-Z]", self.new_password.data):
             self.password.errors.append(
@@ -940,13 +1009,16 @@ class CustomChangePasswordForm(ChangePasswordForm):
                 "パスワードには少なくとも1つの特殊文字が必要です。"
             )
             has_errors = True
+
         # 確認用パスワードと一致するか
         if self.new_password.data != self.new_password_confirm.data:
             self.password.errors.append("確認用パスワードが一致しません。")
             has_errors = True
+
         # エラーがあった場合は更新せずに終了
         if has_errors:
             return False
+
         # すべてのバリデーションに問題がなければパスワードを更新
         user.password = hash_password(self.new_password.data)
         user.is_password_reset_by_user = (
@@ -955,6 +1027,7 @@ class CustomChangePasswordForm(ChangePasswordForm):
         user.change_password_at = datetime.utcnow()  # パスワード変更日時を更新
         db.session.commit()
         flash("パスワードが正常に変更されました。", "success")
+
         return True
 
 
@@ -981,6 +1054,7 @@ def password_condition_gate(f):
             if not current_user.is_password_reset_by_user:
                 return redirect(url_for("security.change_password"))
         return f(*args, **kwargs)
+
     return decorated_function
 
 
@@ -1005,6 +1079,7 @@ def role_user():
     users = User.query.all()
     roles = Role.query.all()
     success = None
+
     if request.method == "POST":
         # ユーザー userのパスワードを初期化する
         user_id = request.form.get("user_id")
@@ -1013,9 +1088,11 @@ def role_user():
             # パスワードリセット関数を呼び出す
             message = reset_user_password(user_id)
             success = message
+
             # Ajaxリクエストの場合はHTMLのみを返す
             if request.headers.get("X-Requested-With") == "XMLHttpRequest":
                 return f'<div class="alert alert-success">{success}</div>'
+
     return render_template(
         "role_user.html",
         users=users,
@@ -1084,6 +1161,7 @@ def get_password_warning():
 def password_changed_handler(signal_sender_flask_app, user):
     """パスワード変更時のハンドラー"""
     user.change_password_at = datetime.utcnow()
+
     # 管理者が他のユーザーのパスワードを変更する場合を検出
     if current_user.has_role("admin") and current_user.id != user.id:
         # 管理者による変更の場合はリセットフラグを変更しない
@@ -1091,6 +1169,7 @@ def password_changed_handler(signal_sender_flask_app, user):
     else:
         # ユーザー自身がパスワードを変更した場合
         user.is_password_reset_by_user = True
+
     db.session.commit()
 
 
@@ -1146,6 +1225,7 @@ def check_login_redirect():
         # ログイン関連のページにいる場合、保存されていたページにリダイレクト
         if request.path in ["/", "/home", "/security/login", "/login"]:
             redirect_url = session.pop("redirect_after_login")
+
             # リダイレクト先が有効な場合はリダイレクト
             if redirect_url:
                 return redirect(redirect_url)
@@ -1172,6 +1252,7 @@ def home():
     ]
     y_data = [[10, 15, 13, 17], [12, 18, 14, 19], [20, 25, 23, 27]]
     series_names = ["データA", "データB", "データC"]
+
     # Create a plotly graph with multiple traces
     traces = []
     for i, x in enumerate(x_data):
@@ -1182,6 +1263,7 @@ def home():
             name=series_names[i]
         )
         traces.append(trace)
+
     layout = go.Layout(
         xaxis=dict(title="日付"),
         yaxis=dict(title="値"),
@@ -1222,6 +1304,7 @@ def home():
         ]
     )
     graph = pyo.plot(fig, output_type="div", include_plotlyjs=False)
+
     return render_template("home.html", graph=graph)
 
 
@@ -1235,23 +1318,28 @@ def security_logs():
     username = request.args.get("username", "")
     start_date = request.args.get("start_date", "")
     end_date = request.args.get("end_date", "")
+
     # ベースクエリの作成
     query = SecurityLog.query.order_by(SecurityLog.timestamp.desc())
+
     # フィルタ条件の適用
     if event_type:
         query = query.filter(SecurityLog.event_type == event_type)
+
     if username:
         query = query.join(
             SecurityLog.user
         ).filter(
             User.username.like(f"%{username}%")
         )
+
     if start_date:
         try:
             start_datetime = datetime.strptime(start_date, "%Y-%m-%d")
             query = query.filter(SecurityLog.timestamp >= start_datetime)
         except ValueError:
             pass
+
     if end_date:
         try:
             end_datetime = datetime.strptime(
@@ -1261,13 +1349,16 @@ def security_logs():
             query = query.filter(SecurityLog.timestamp <= end_datetime)
         except ValueError:
             pass
+
     # ページネーション
     page = request.args.get("page", 1, type=int)
     per_page = 50  # 1ページあたりの表示件数
     logs = query.paginate(page=page, per_page=per_page, error_out=False)
+
     # イベントタイプの一覧を取得（フィルター用）
     event_types = db.session.query(SecurityLog.event_type).distinct().all()
     event_types = [et[0] for et in event_types]
+
     return render_template(
         "security_logs.html",
         logs=logs,
@@ -1433,14 +1524,18 @@ def save_test_input():
     フロントエンドのJavaScriptと一致させるため、入力内容と保存日時をセッションに保存します。
     """
     data = request.get_json()
+
     # 入力内容を保存（テンプレートのJavaScriptと一致させる）
     input_value = data.get("input", "")
     session["test_input"] = input_value
+
     # 保存日時を記録
     current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     session["test_input_time"] = current_time
+
     # セッションの変更を確実に保存
     session.modified = True
+
     # 保存したデータと時刻を返す
     return jsonify(
         {
@@ -1468,6 +1563,7 @@ if __name__ == "__main__":
                 INITED_ROLES = True
         if INITED_ROLES:
             db.session.commit()
+
         INITED_USERS = False
         for user_name, user_info in initial_users.items():
             if not User.query.filter_by(username=user_name).first():
@@ -1481,9 +1577,11 @@ if __name__ == "__main__":
                 INITED_USERS = True
         if INITED_USERS:
             db.session.commit()
+
     # Flask開発サーバー起動前の環境変数を確認
     # デバッグモードでの再読み込みを検出するための環境変数
     is_reload = os.environ.get("WERKZEUG_RUN_MAIN") == "true"
+
     # リロードの場合はログを記録しない（開発サーバーの再読み込み時のみスキップ）
     if not is_reload:
         with app.app_context():
@@ -1496,5 +1594,6 @@ if __name__ == "__main__":
             )
             db.session.add(log_entry)
             db.session.commit()
+
     # Flaskアプリケーションを起動
     app.run(debug=True, host="0.0.0.0", port=5000)

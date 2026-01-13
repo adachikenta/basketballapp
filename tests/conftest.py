@@ -2,6 +2,7 @@
 テストヘルパー関数とフィクスチャモジュール
 テスト全体で共通して使用する便利な関数や設定をここに定義します
 """
+
 # この警告は、テスト関数の引数名が、同じファイル内で定義されている fixture の名前と同じ場合に発生します。
 # 今回の場合、app_context という名前の fixture が定義されており、テスト関数の引数も同じ名前になっています。
 # Pytestでは、テスト関数が fixture を使用する場合、引数の名前を fixture の名前と同じにする必要があります。
@@ -10,6 +11,7 @@
 # Pytest が適切な fixture の値をテスト関数に渡すことができます
 # 引数を削除すると、テスト関数は fixture にアクセスできなくなり、テストが失敗します
 # pylint: disable=redefined-outer-name
+
 # この警告は、ファイルの先頭に import 文がない場合に発生します。
 # 今回の場合は、テスト対象の Flask アプリケーションをインポートするために必要な import 文が含まれています。
 # テスト対象のアプリケーションのパスを sys.path に追加することで、
@@ -17,13 +19,18 @@
 # pylint: disable=wrong-import-position
 # flake8: noqa: E402
 # Disable E402 (module level import not at top of file) for this file
+
 import os
 import sys
 from datetime import datetime
 import pytest
+
 # Add the parent directory to sys.path to import app
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 from app import app, db, User, Role
+
+
 @pytest.fixture
 def app_context():
     """アプリケーションコンテキストのフィクスチャ"""
@@ -35,10 +42,14 @@ def app_context():
         yield app
         db.session.remove()
         db.drop_all()
+
+
 @pytest.fixture
 def test_client(app_context):
     """テストクライアントのフィクスチャ"""
     return app_context.test_client()
+
+
 @pytest.fixture
 def init_database():
     """データベースの初期化フィクスチャ"""
@@ -73,12 +84,16 @@ def init_database():
         # テスト後にデータベースを削除
         db.session.remove()
         db.drop_all()
+
+
 def login(client, username, password):
     """ログインヘルパー関数"""
     return client.post('/login', data={
         'username': username,
         'password': password,
     }, follow_redirects=True)
+
+
 def logout(client):
     """ログアウトヘルパー関数"""
     return client.get('/logout', follow_redirects=True)
