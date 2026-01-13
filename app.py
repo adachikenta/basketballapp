@@ -711,6 +711,7 @@ def format_date(timestamp):
     convtime = f"{timestamp[8:10]}:{timestamp[10:12]}:{timestamp[12:14]}"
     return f"{convdate} {convtime}"
 
+
 ###################################################
 # ロールとユーザー管理
 ###################################################

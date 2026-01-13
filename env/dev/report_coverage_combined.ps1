@@ -1,21 +1,16 @@
 $ErrorActionPreference = "Stop"
-$venvpath = ".\venv"
 $checkVenvScript = Join-Path $PSScriptRoot "check_venv.ps1"
 
 Write-Host "Starting coverage report generation..." -ForegroundColor Cyan
 
-# Check if .coverage file exists
-if (-not (Test-Path -Path "./__cov__/internal/.coverage")) {
-    Write-Host "Error: .coverage file not found in __cov__/internal directory. Please run tests to generate coverage data." -ForegroundColor Red
+# Check if .coverage files exist in __cov__ directories
+if (-not (Test-Path -Path "__cov__/internal/.coverage")) {
+    Write-Host "Error: .coverage file not found in __cov__/internal/. Please run internal tests first." -ForegroundColor Red
     exit 1
-} else {
-    Copy-Item "__cov__/internal/.coverage" ".coverage.internal"
 }
-if (-not (Test-Path -Path "./__cov__/e2e/.coverage")) {
-    Write-Host "Error: .coverage file not found in __cov__/e2e directory. Please run tests to generate coverage data." -ForegroundColor Red
+if (-not (Test-Path -Path "__cov__/e2e/.coverage")) {
+    Write-Host "Error: .coverage file not found in __cov__/e2e/. Please run e2e tests first." -ForegroundColor Red
     exit 1
-} else {
-    Copy-Item "__cov__/e2e/.coverage" ".coverage.e2e"
 }
 
 # Run common validation and activate venv
@@ -26,20 +21,41 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-# Combine .coverage files
+# Remove existing .coverage file if present
+if (Test-Path -Path ".coverage") {
+    Remove-Item ".coverage" -Force
+    Write-Host "Removed existing .coverage file" -ForegroundColor Yellow
+}
+
+# Combine .coverage files directly to __cov__/.coverage
 Write-Host "`n===== COMBINING COVERAGE DATA =====" -ForegroundColor Cyan
 try {
-    & python -m coverage combine .coverage.internal .coverage.e2e
+    & python -m coverage combine --keep --data-file=__cov__/.coverage __cov__/internal/.coverage __cov__/e2e/.coverage
+    if (Test-Path "__cov__/.coverage") {
+        Write-Host "Created combined .coverage in __cov__ directory" -ForegroundColor Yellow
+    } else {
+        Write-Host "Error: Failed to create combined .coverage file." -ForegroundColor Red
+        exit 1
+    }
 } catch {
     Write-Host "Error: An error occurred while combining coverage data." -ForegroundColor Red
     Write-Host $_.Exception.Message -ForegroundColor Red
     exit 1
 }
 
+# Create __cov__/combined directory if it doesn't exist
+if (-not (Test-Path -Path "__cov__/combined")) {
+    New-Item -Path "__cov__/combined" -ItemType Directory -Force | Out-Null
+}
+
+# Move __cov__/.coverage to __cov__/combined/ before generating reports
+Move-Item -Path "__cov__/.coverage" -Destination (Join-Path -Path (Get-Location) -ChildPath "__cov__\combined\.coverage") -Force
+Write-Host "Moved __cov__/.coverage to __cov__/combined/" -ForegroundColor Yellow
+
 # Display coverage summary
 Write-Host "`n===== COVERAGE SUMMARY =====" -ForegroundColor Cyan
 try {
-    & python -m coverage report
+    & python -m coverage report --data-file=__cov__/combined/.coverage
 } catch {
     Write-Host "Error: An error occurred while generating the coverage report." -ForegroundColor Red
     Write-Host $_.Exception.Message -ForegroundColor Red
@@ -49,7 +65,7 @@ try {
 # Display detailed coverage report (including missing lines)
 Write-Host "`n===== DETAILED COVERAGE REPORT =====" -ForegroundColor Cyan
 try {
-    & python -m coverage report -m
+    & python -m coverage report -m --data-file=__cov__/combined/.coverage
 } catch {
     Write-Host "Error: An error occurred while generating the detailed coverage report." -ForegroundColor Red
     Write-Host $_.Exception.Message -ForegroundColor Red
@@ -58,7 +74,7 @@ try {
 # Generate coverage report
 Write-Host "`n===== GENERATING COVERAGE REPORT =====" -ForegroundColor Cyan
 try {
-    & python -m coverage html -d __cov__/combined --title "Total Test Coverage Report"
+    & python -m coverage html -d __cov__/combined --title "Total Test Coverage Report" --data-file=__cov__/combined/.coverage
 } catch {
     Write-Host "Error: An error occurred while generating the coverage report." -ForegroundColor Red
     Write-Host $_.Exception.Message -ForegroundColor Red
@@ -69,9 +85,6 @@ try {
 $covReportPath = Join-Path -Path (Get-Location) -ChildPath "__cov__/combined/index.html"
 if (Test-Path -Path $covReportPath) {
     Write-Host "`nCoverage report successfully generated:" -ForegroundColor Green
-
-    # move .coverage in to __cov__/combined
-    Move-Item -Path ".coverage" -Destination (Join-Path -Path (Get-Location) -ChildPath "__cov__/combined/.coverage") -Force
 
     Write-Host $covReportPath -ForegroundColor Yellow
 
@@ -88,3 +101,4 @@ if (Get-Command "deactivate" -ErrorAction SilentlyContinue) {
 }
 
 Write-Host "`nCoverage report generation completed." -ForegroundColor Green
+exit 0

@@ -66,12 +66,12 @@ function Test-VenvPythonVersion {
 # Main validation logic
 $pythonInstalled = Test-PythonInstalled
 if (-not $pythonInstalled) {
-    [System.Environment]::Exit(1)
+    exit 1
 }
 
 $venvExists = Test-VenvExists
 if (-not $venvExists) {
-    [System.Environment]::Exit(1)
+    exit 1
 }
 
 # Only proceed to activation if we reach here (venv exists)
@@ -91,7 +91,7 @@ if ($ActivateVenv) {
     }
     catch {
         Write-Host "Failed to activate virtual environment: $_" -ForegroundColor Red
-        [System.Environment]::Exit(1)
+        exit 1
     }
 }
 

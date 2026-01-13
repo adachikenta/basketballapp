@@ -48,6 +48,7 @@ try {
             $pythonProcesses | Stop-Process -Force
             Write-Host "Cleaned up Python processes." -ForegroundColor Yellow
         }
+        exit 0
     } else {
         Write-Host "Tests failed or had errors. Exit code: $testResult" -ForegroundColor Red
         exit $testResult

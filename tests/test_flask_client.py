@@ -22,6 +22,7 @@ import sys
 import os
 from datetime import datetime
 import pytest
+from flask_security import signals, hash_password
 
 # Add the parent directory to sys.path to import app
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -57,8 +58,7 @@ def flask_test_client():
             # テスト用のユーザーを作成
             test_user = User(
                 username='testuser',
-                password=('$2b$12$AbCdEfGhIjKlMnOpQrStUvWxYz01234'
-                          '567890AbCdEfGhIj'),
+                password=hash_password('testpassword'),
                 active=True,
                 change_password_at=datetime.utcnow(),
                 is_password_reset_by_user=True
@@ -67,8 +67,7 @@ def flask_test_client():
 
             test_admin = User(
                 username='testadmin',
-                password=('$2b$12$AbCdEfGhIjKlMnOpQrStUvWxYz01234'
-                          '567890AbCdEfGhIj'),
+                password=hash_password('testpassword'),
                 active=True,
                 change_password_at=datetime.utcnow(),
                 is_password_reset_by_user=True
@@ -138,3 +137,74 @@ def test_session_management(flask_test_client):
         session_id='test-session-id'
     ).first()
     assert updated_session.is_locked
+
+
+def test_authenticated_user_redirect_from_index(flask_test_client):
+    """認証済みユーザーがトップページからホームにリダイレクトされることをテスト"""
+    # ログイン
+    response = flask_test_client.post('/login', data={
+        'username': 'testadmin',
+        'password': 'testpassword'
+    }, follow_redirects=False)
+
+    # トップページにアクセス
+    response = flask_test_client.get('/', follow_redirects=False)
+    assert response.status_code == 302
+    assert '/home' in response.location
+
+
+def test_logout_without_user(flask_test_client):
+    """ユーザーがNoneの状態でログアウトシグナルが発火した場合のテスト"""
+    # user=Noneでログアウトシグナルをテスト
+    # この場合、セッション削除処理がスキップされることを確認
+
+    # シグナルハンドラを手動で呼び出してテスト
+    with flask_test_client.application.app_context():
+        # user=Noneで呼び出し
+        signals.user_unauthenticated.send(
+            flask_test_client.application,
+            user=None
+        )
+        # エラーが発生しないことを確認（assertは不要、例外が出なければOK）
+
+
+def test_session_deleted_on_logout(flask_test_client):
+    """ログアウト時にセッションがDBから削除されることをテスト"""
+    with flask_test_client.application.app_context():
+        # テストユーザーを取得
+        test_user = User.query.filter_by(username='testadmin').first()
+
+        # セッションを手動で作成
+        session_id = 'test-logout-session-id'
+        user_session = UserSession(
+            user_id=test_user.id,
+            session_id=session_id,
+            ip_address='127.0.0.1',
+            user_agent='Test Agent'
+        )
+        db.session.add(user_session)
+        db.session.commit()
+
+        # セッションが作成されたことを確認
+        saved_session = UserSession.query.filter_by(
+            session_id=session_id
+        ).first()
+        assert saved_session is not None
+        assert saved_session.user_id == test_user.id
+
+        # クッキーを含むリクエストコンテキストを作成
+        with flask_test_client.application.test_request_context(
+            '/',
+            headers={'Cookie': f'ews_session={session_id}'}
+        ):
+            # user_unauthenticatedシグナルを発火
+            signals.user_unauthenticated.send(
+                flask_test_client.application,
+                user=test_user
+            )
+
+        # セッションが削除されたことを確認
+        deleted_session = UserSession.query.filter_by(
+            session_id=session_id
+        ).first()
+        assert deleted_session is None

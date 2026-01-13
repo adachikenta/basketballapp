@@ -1,14 +1,14 @@
 # PowerShell script to run the tests with the Flask app running in the background
+
+$ErrorActionPreference = "Stop"
 $venvPath = ".\venv"
 $appProcess = $null
 $reportPath = Join-Path -Path (Get-Location) -ChildPath "__tests__/report_e2e.html"
+$checkVenvScript = Join-Path $PSScriptRoot "check_venv.ps1"
+
 function Start-FlaskApp {
     Write-Host "Starting Flask application in the background..." -ForegroundColor Green
 
-    # Activate virtual environment
-    . $venvPath\Scripts\Activate.ps1
-
-    # Start Flask app in the background with testing environment
     $env:FLASK_ENV = "testing"
     $env:FLASK_APP = "app.py"
     $port = 5000
@@ -63,6 +63,7 @@ function Start-FlaskApp {
 
     return $appProcess
 }
+
 function Stop-FlaskApp {
     param (
         [Parameter(Mandatory=$true)]
@@ -114,15 +115,24 @@ function Stop-FlaskApp {
         Write-Host "Error during cleanup: $_" -ForegroundColor Yellow
     }
 }
+
+# Run common validation and activate venv
+Write-Host "Validating Python environment..." -ForegroundColor Yellow
+& $checkVenvScript -ActivateVenv
+if ($LASTEXITCODE -ne 0) {
+    exit 1
+}
+
 # E2E Testing
 try {
-    # Activate virtual environment
-    Write-Host "Activating virtual environment..." -ForegroundColor Yellow
-    . $venvPath\Scripts\Activate.ps1
     # Start Flask app if running E2E tests
     $appProcess = Start-FlaskApp
-    & "$venvPath\Scripts\pytest.exe" ./tests/e2e_playwright.py -v --html=$reportPath
+
+    # Run tests with coverage
+    & "$venvPath\Scripts\pytest.exe" ./tests/e2e_playwright.py -v --html=$reportPath --cov=. --cov-config=pytest.ini --cov-report=
+
     $testResult = $LASTEXITCODE
+
 } catch {
     Write-Host "Error: $_" -ForegroundColor Red
     $testResult = 1
@@ -171,13 +181,14 @@ try {
         # Generate coverage report
         $reportCoverageScript = Join-Path $PSScriptRoot "report_coverage_e2e.ps1"
         if (Test-Path -Path $reportCoverageScript) {
-            Write-Host "`nGenerating E2E coverage report..." -ForegroundColor Cyan
+            Write-Host "`nGenerating coverage report..." -ForegroundColor Cyan
             & $reportCoverageScript
             if ($LASTEXITCODE -ne 0) {
-                Write-Host "E2E coverage report generation failed with exit code: $LASTEXITCODE" -ForegroundColor Red
+                Write-Host "Coverage report generation failed with exit code: $LASTEXITCODE" -ForegroundColor Red
                 exit $LASTEXITCODE
             }
         }
+        exit 0
     } else {
         Write-Host "Tests failed or had errors. Exit code: $testResult" -ForegroundColor Red
         exit $testResult
