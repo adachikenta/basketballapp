@@ -1,4 +1,6 @@
 $ErrorActionPreference = "Stop"
+Write-Host "`nStarting setup base environment..." -ForegroundColor Cyan
+
 $venvPath = ".\venv"
 $pythonVersion = "python312"
 
@@ -48,6 +50,7 @@ function Install-ScoopPackage {
         catch {
             $attempt++
             Write-Host "Attempt $attempt failed: $_" -ForegroundColor Red
+            Write-Host "Stack trace: $($_.ScriptStackTrace)" -ForegroundColor Red
             if ($attempt -lt $MaxRetries) {
                 Write-Host "Retrying..." -ForegroundColor Yellow
                 Start-Sleep -Seconds 2
@@ -120,10 +123,7 @@ catch {
 
 # check versions bucket
 Write-Host "Checking versions bucket..." -ForegroundColor Yellow
-$previousErrorAction = $ErrorActionPreference
-$ErrorActionPreference = "Continue"
 $buckets = scoop bucket list 2>&1 | Out-String
-$ErrorActionPreference = $previousErrorAction
 
 if ($buckets -match "versions") {
     Write-Host "versions bucket is already added." -ForegroundColor Green
@@ -171,7 +171,6 @@ if (Test-Path $scoopgettext) {
 # check if python of scoop is installed
 $scooppython = "$env:USERPROFILE\scoop\apps\$pythonVersion\current\python.exe"
 $pythonInstalled = Install-ScoopPackage -PackageName $pythonVersion -ExecutablePath $scooppython
-
 if (-not $pythonInstalled) {
     Write-Host "Failed to install Python. Exiting..." -ForegroundColor Red
     exit 1

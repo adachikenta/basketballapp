@@ -1,4 +1,9 @@
+param(
+    [string]$PythonScript = ".\app.py"
+)
+
 $ErrorActionPreference = "Stop"
+Write-Host "`nStarting application..." -ForegroundColor Cyan
 
 $checkVenvScript = Join-Path $PSScriptRoot "check_venv.ps1"
 
@@ -9,29 +14,31 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-# Check if Python script path is provided as argument, default to app.py
-if ($args.Count -eq 0) {
-    $pythonScript = ".\app.py"
-    Write-Host "No Python script specified, using default: $pythonScript" -ForegroundColor Cyan
+# Display which script will be executed
+if ($PythonScript -eq ".\app.py") {
+    Write-Host "No Python script specified, using default: $PythonScript" -ForegroundColor Cyan
 } else {
-    $pythonScript = $args[0]
+    Write-Host "Using Python script: $PythonScript" -ForegroundColor Cyan
 }
 
 # Verify the Python script exists
-if (-not (Test-Path $pythonScript)) {
-    Write-Host "Error: Python script not found: $pythonScript" -ForegroundColor Red
+if (-not (Test-Path $PythonScript)) {
+    Write-Host "Error: Python script not found: $PythonScript" -ForegroundColor Red
     exit 1
 }
 
 # Run the application
+$appResult = 0
 try {
-    Write-Host "Starting Python script: $pythonScript" -ForegroundColor Green
-    python $pythonScript
+    Write-Host "Starting Python script: $PythonScript" -ForegroundColor Green
+    python $PythonScript
     $appResult = $LASTEXITCODE
 } catch {
+    $appResult = $LASTEXITCODE
     Write-Host "Error: $_" -ForegroundColor Red
-    $appResult = 1
+    Write-Host "Stack trace: $($_.ScriptStackTrace)" -ForegroundColor Red
 } finally {
+    # Deactivate virtual environment
     if (Get-Command "deactivate" -ErrorAction SilentlyContinue) {
         Write-Host "Deactivating virtual environment..." -ForegroundColor Yellow
         deactivate

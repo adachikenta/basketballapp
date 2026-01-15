@@ -8,9 +8,9 @@ setlocal
 cd /d "%~dp0"
 
 powershell -ExecutionPolicy Bypass -NoLogo -File .\env\dev\po2mo.ps1
-REM po2mo.ps1 failure is not critical, continue anyway
+if %ERRORLEVEL% NEQ 0 (goto :catch)
 
-start /wait powershell -ExecutionPolicy Bypass -NoLogo -File .\env\dev\start_app.ps1
+powershell -ExecutionPolicy Bypass -NoLogo -File .\env\dev\start_app.ps1 ".\app.py"
 if %ERRORLEVEL% NEQ 0 (goto :catch)
 
 :catch

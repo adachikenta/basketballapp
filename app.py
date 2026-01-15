@@ -1177,8 +1177,12 @@ def password_changed_handler(signal_sender_flask_app, user):
 ###################################################
 # 開発テスト用
 ###################################################
+# __cov__ディレクトリを作成
+cov_dir = os.path.join(app.root_path, "__cov__")
+os.makedirs(cov_dir, exist_ok=True)
+
 cov = coverage.Coverage(
-    data_file=".coverage",
+    data_file=os.path.join(cov_dir, ".coverage"),
     source=["."],
     omit=[
         "tests/*",
